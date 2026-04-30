@@ -1,0 +1,29 @@
+model:
+  provider: anthropic
+  name: claude-sonnet-4-6
+  temperature: 0.8
+  max_tokens: 1024
+  max_retries: 3
+
+concurrency: 5  # parallel API calls in generate_batch
+
+prompt:
+  mode: zero_shot
+  n_examples: 0
+  example_selection: stratified
+
+attributes:
+  fields:
+    - age
+    - sex
+    - vehicles
+    - has_licence
+    - employment
+    - hh_income
+    - hh_zone
+    - day
+    - access_egress_distance
+
+validation:
+  strict: true
+  log_violations: true

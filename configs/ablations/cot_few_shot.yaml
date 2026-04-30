@@ -1,0 +1,30 @@
+model:
+  provider: anthropic
+  name: claude-sonnet-4-6
+  temperature: 0.8
+  max_tokens: 2048
+  max_retries: 3
+
+concurrency: 5
+
+prompt:
+  mode: cot_few_shot
+  n_examples: 3
+  example_selection: stratified
+  few_shot_pool: data/few_shot/pool.jsonl
+
+attributes:
+  fields:
+    - age
+    - sex
+    - vehicles
+    - has_licence
+    - employment
+    - hh_income
+    - hh_zone
+    - day
+    - access_egress_distance
+
+validation:
+  strict: true
+  log_violations: true
