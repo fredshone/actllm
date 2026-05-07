@@ -1,0 +1,29 @@
+model:
+  provider: local
+  name: google/gemma-3-12b-it
+  temperature: 0.8
+  max_tokens: 1024
+  max_retries: 3
+
+concurrency: 1  # local GPU inference is sequential
+
+prompt:
+  mode: zero_shot
+  n_examples: 0
+  example_selection: stratified
+
+attributes:
+  fields:
+    - age
+    - sex
+    - vehicles
+    - has_licence
+    - employment
+    - hh_income
+    - hh_zone
+    - day
+    - access_egress_distance
+
+validation:
+  strict: true
+  log_violations: true

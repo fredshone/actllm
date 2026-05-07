@@ -82,12 +82,13 @@ class ScheduleGenerator:
             )
             raw = self._client.generate(system_prompt, prompt)
             state.raw_response = raw
+            _prompt_logger.debug("=== RESPONSE [%s attempt %d] ===\n%s", record_id, attempt, raw)
 
-            schedule, fallback_level = self._parser.parse(raw)
+            schedule, fallback_level, parse_errors = self._parser.parse(raw)
             state.fallback_level = fallback_level
 
             if schedule is None:
-                errors = ["Could not parse a valid JSON schedule from the response."]
+                errors = ["Could not parse a valid JSON schedule from the response."] + parse_errors
                 prompt = self._builder.build_retry(attributes, errors)
                 continue
 

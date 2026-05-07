@@ -4,6 +4,8 @@ LLM-based 24-hour activity schedule generation conditioned on person-level attri
 
 ## Setup
 
+### Anthropic (default)
+
 ```bash
 uv sync --extra dev
 cp .env.example .env  # add your ANTHROPIC_API_KEY
@@ -14,6 +16,16 @@ ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 Note that `actllm` will always check .env for the key.
+
+### Local model (GPU)
+
+Requires a CUDA-capable GPU. Installs `transformers` and `accelerate` alongside the base dependencies:
+
+```bash
+uv sync --extra local
+```
+
+The model is downloaded from HuggingFace on first use (~8 GB for Gemma 3 4B). No API key needed.
 
 ## Generate schedules
 
@@ -36,6 +48,19 @@ uv run python scripts/generate.py \
 Output is streamed to JSONL as it's generated — safe to interrupt.
 
 Pass `--config configs/ablations/few_shot_stratified.yaml` (or any other config) to use a different prompt mode.
+
+### Running with a local Gemma model
+
+```bash
+# Generate 100 schedules using Gemma 3 4B on GPU
+uv run python scripts/generate.py \
+  --config configs/gemma.yaml \
+  --input data/nts_attributes_2023.csv \
+  --output outputs/gemma_run.jsonl \
+  --n-samples 100
+```
+
+The first run downloads the model weights. Subsequent runs load from the HuggingFace cache. Inference is sequential (`concurrency: 1`) — expect slower throughput than the Anthropic API but no per-token cost.
 
 ### Inspecting prompts
 
@@ -121,12 +146,15 @@ Results are written to `outputs/ablations/<config>/schedules.jsonl` and `schedul
 
 ```yaml
 model:
-  name: claude-sonnet-4-6
+  provider: anthropic       # anthropic | local
+  name: claude-sonnet-4-6   # model name or HuggingFace model ID
   temperature: 0.8
   max_retries: 3
 
-concurrency: 5  # parallel API calls
+concurrency: 5  # parallel API calls; set to 1 for local inference
 ```
+
+The `local` provider loads any HuggingFace text-generation model onto the GPU. The bundled `configs/gemma.yaml` targets `google/gemma-3-4b-it`; swap `name` for any other Gemma variant (e.g. `google/gemma-2-9b-it`).
 
 ## Tests
 

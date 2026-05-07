@@ -13,9 +13,14 @@ dependencies = [
     "pandas>=2.0.0",
     "python-dotenv>=1.0.0",
     "tqdm>=4.0.0",
+    "torch>=2.4.0",
 ]
 
 [project.optional-dependencies]
+local = [
+    "transformers>=4.50.0",
+    "accelerate>=1.0.0",
+]
 dev = [
     "pytest>=8.0.0",
     "ruff>=0.4.0",
@@ -35,3 +40,11 @@ line-length = 100
 [tool.mypy]
 python_version = "3.12"
 strict = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu124" }
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true

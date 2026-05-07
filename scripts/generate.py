@@ -39,7 +39,7 @@ def main(
     n_samples: int = typer.Option(10, "--n-samples", "-n", help="Number of schedules to generate"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Print prompt only, no API call"),
     debug_prompts: bool = typer.Option(
-        False, "--debug-prompts", help="Log full prompts (including few-shot) to stderr"
+        False, "--debug", help="Log full prompts and responses to stderr"
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:

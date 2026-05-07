@@ -14,9 +14,10 @@ _CONSTRAINTS = """\
 ## Hard Constraints
 1. The schedule MUST start with activity "home" at exactly "00:00".
 2. Allowed activity types (use these exact strings): home, work, education, shop, medical, other, escort, visit
-3. Times use 24-hour HH:MM format. Hours range 00–23, minutes range 00–59.
-4. Times must be strictly increasing throughout the schedule.
-5. The final activity must start before 23:59 and will be assumed to end at 24:00.
+3. Consecutive home, work or education activities should not occur, eg, a work activity should not be immediately followed by another work activity.
+4. Times use 24-hour HH:MM format. Hours range 00–23, minutes range 00–59.
+5. Times must be strictly increasing throughout the schedule.
+6. The final activity is expected to be "home" and must start before 24:00 and will be assumed to end at 24:00.
 
 ## Output Format
 Respond with a single JSON object in exactly this structure. No other text.
@@ -30,20 +31,15 @@ Respond with a single JSON object in exactly this structure. No other text.
 }}
 """
 
-ZERO_SHOT_TEMPLATE = (
-    """\
+ZERO_SHOT_TEMPLATE = """\
 Generate a realistic 24-hour activity schedule for the following person.
 
 ## Person Attributes
 {attributes_block}
 
-"""
-    + _CONSTRAINTS
-    + "\n"
-)
+""" + _CONSTRAINTS + "\n"
 
-FEW_SHOT_TEMPLATE = (
-    """\
+FEW_SHOT_TEMPLATE = """\
 Generate a realistic 24-hour activity schedule for the following person.
 
 ## Examples
@@ -52,10 +48,7 @@ Generate a realistic 24-hour activity schedule for the following person.
 ## Person Attributes
 {attributes_block}
 
-"""
-    + _CONSTRAINTS
-    + "\n"
-)
+""" + _CONSTRAINTS + "\n"
 
 COT_ZERO_SHOT_TEMPLATE = """\
 Generate a realistic 24-hour activity schedule for the following person.
@@ -66,9 +59,10 @@ Generate a realistic 24-hour activity schedule for the following person.
 ## Hard Constraints
 1. The schedule MUST start with activity "home" at exactly "00:00".
 2. Allowed activity types (use these exact strings): home, work, education, shop, medical, other, escort, visit
-3. Times use 24-hour HH:MM format. Hours range 00–23, minutes range 00–59.
-4. Times must be strictly increasing throughout the schedule.
-5. The final activity must start before 23:59 and will be assumed to end at 24:00.
+3. Consecutive home, work or education activities should not occur, eg, a work activity should not be immediately followed by another work activity.
+4. Times use 24-hour HH:MM format. Hours range 00–23, minutes range 00–59.
+5. Times must be strictly increasing throughout the schedule.
+6. The final activity is expected to be "home" and must start before 24:00 and will be assumed to end at 24:00.
 
 ## Instructions
 First write a brief <reasoning> block: consider whether the person works, their likely wake time, \
@@ -99,9 +93,10 @@ Generate a realistic 24-hour activity schedule for the following person.
 ## Hard Constraints
 1. The schedule MUST start with activity "home" at exactly "00:00".
 2. Allowed activity types (use these exact strings): home, work, education, shop, medical, other, escort, visit
-3. Times use 24-hour HH:MM format. Hours range 00–23, minutes range 00–59.
-4. Times must be strictly increasing throughout the schedule.
-5. The final activity must start before 23:59 and will be assumed to end at 24:00.
+3. Consecutive home, work or education activities should not occur, eg, a work activity should not be immediately followed by another work activity.
+4. Times use 24-hour HH:MM format. Hours range 00–23, minutes range 00–59.
+5. Times must be strictly increasing throughout the schedule.
+6. The final activity is expected to be "home" and must start before 24:00 and will be assumed to end at 24:00.
 
 ## Instructions
 First write a brief <reasoning> block: consider whether the person works, their likely wake time, \
@@ -133,9 +128,10 @@ Please generate a corrected 24-hour activity schedule for the same person.
 ## Hard Constraints
 1. The schedule MUST start with activity "home" at exactly "00:00".
 2. Allowed activity types (use these exact strings): home, work, education, shop, medical, other, escort, visit
-3. Times use 24-hour HH:MM format. Hours range 00–23, minutes range 00–59.
-4. Times must be strictly increasing throughout the schedule.
-5. The final activity must start before 23:59 and will be assumed to end at 24:00.
+3. Consecutive home, work or education activities should not occur, eg, a work activity should not be immediately followed by another work activity.
+4. Times use 24-hour HH:MM format. Hours range 00–23, minutes range 00–59.
+5. Times must be strictly increasing throughout the schedule.
+6. The final activity is expected to be "home" and must start before 24:00 and will be assumed to end at 24:00.
 
 ## Output Format
 Respond with a single JSON object in exactly this structure. No other text.

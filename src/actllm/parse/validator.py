@@ -30,13 +30,6 @@ class Validator:
                     f"({', '.join(sorted(ALLOWED_ACTIVITIES))})"
                 )
 
-        # V2: no consecutive duplicate activities
-        for i in range(1, len(acts)):
-            if acts[i].activity == acts[i - 1].activity:
-                violations.append(
-                    f"V2: consecutive duplicate activity '{acts[i].activity}' at index {i}"
-                )
-
         # V3: times strictly increasing (lexicographic comparison valid for zero-padded HH:MM)
         for i in range(1, len(acts)):
             if acts[i].start <= acts[i - 1].start:

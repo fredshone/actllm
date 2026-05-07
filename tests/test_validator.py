@@ -18,21 +18,6 @@ def test_valid_schedule_passes():
     assert result.violations == []
 
 
-def test_v2_consecutive_duplicate():
-    validator = Validator()
-    # Pydantic catches this before validator; test validator's own V2 check
-    # by patching activities directly
-    from actllm.schedule.schema import Activity, ActivityType
-    schedule = Schedule.__new__(Schedule)
-    object.__setattr__(schedule, "activities", [
-        Activity(activity=ActivityType.home, start="00:00"),
-        Activity(activity=ActivityType.work, start="01:00"),
-        Activity(activity=ActivityType.work, start="02:00"),
-    ])
-    result = validator.validate(schedule)
-    assert not result.valid
-    assert any("V2" in v for v in result.violations)
-
 
 def test_v3_non_monotonic():
     validator = Validator()

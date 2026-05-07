@@ -32,12 +32,24 @@ class LLMClient:
         self._config = config
         if config.provider == "anthropic":
             self._client = anthropic.Anthropic()
+        elif config.provider == "local":
+            import torch
+            from transformers import pipeline as hf_pipeline  # type: ignore[import-untyped]
+
+            self._pipeline = hf_pipeline(
+                "text-generation",
+                model=config.name,
+                device="cuda",
+                torch_dtype=torch.bfloat16,
+            )
         else:
             raise ValueError(f"Unsupported provider: {config.provider}")
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
         if self._config.provider == "anthropic":
             return self._generate_anthropic(system_prompt, user_prompt)
+        elif self._config.provider == "local":
+            return self._generate_local(system_prompt, user_prompt)
         raise ValueError(f"Unsupported provider: {self._config.provider}")
 
     def _generate_anthropic(self, system_prompt: str, user_prompt: str) -> str:
@@ -66,3 +78,16 @@ class LLMClient:
         if content.type != "text":
             raise ValueError(f"Unexpected response content type: {content.type}")
         return content.text
+
+    def _generate_local(self, system_prompt: str, user_prompt: str) -> str:
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        outputs = self._pipeline(  # type: ignore[attr-defined]
+            messages,
+            max_new_tokens=self._config.max_tokens,
+            temperature=self._config.temperature,
+            do_sample=True,
+        )
+        return outputs[0]["generated_text"][-1]["content"]  # type: ignore[no-any-return]
