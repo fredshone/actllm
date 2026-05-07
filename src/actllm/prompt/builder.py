@@ -21,7 +21,7 @@ _ATTR_LABELS: dict[str, str] = {
     "car_access": lambda x: f"Car access: {x}",
     "work_status": lambda x: f"Employment status: {x}",
     "income": lambda x: f"Annual household income: {x} Euros",
-    "area": lambda x: f"Household area type: {x}",
+    "area": lambda x: f"Area type: {x}",
     "hh_children": lambda x: f"Has children in household: {x}",
     "hh_size": lambda x: f"Household number of members: {x}",
     "education": lambda x: f"Education level: {x}",
