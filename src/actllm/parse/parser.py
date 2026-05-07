@@ -8,18 +8,14 @@ from ..schedule.schema import Activity, ActivityType, Schedule
 
 logger = logging.getLogger(__name__)
 
-_JSON_BLOCK_RE = re.compile(r"\{.*\}", re.DOTALL)
+_JSON_BLOCK_RE = re.compile(r"\[.*\]", re.DOTALL)
 _SCHEDULE_TAG_RE = re.compile(r"<schedule>(.*?)</schedule>", re.DOTALL | re.IGNORECASE)
 
 
-def _build_schedule(raw_obj: dict) -> Schedule:
-    activities_raw = raw_obj.get("schedule", [])
+def _build_schedule(raw_list: list) -> Schedule:
     activities = [
-        Activity(
-            activity=ActivityType(item["activity"]),
-            start=item["start"],
-        )
-        for item in activities_raw
+        Activity(activity=ActivityType(next(iter(item))), start=next(iter(item.values())))
+        for item in raw_list
     ]
     return Schedule(activities=activities)
 

@@ -1,4 +1,5 @@
 """CLI for batch schedule generation from NTS attribute data."""
+
 from __future__ import annotations
 
 import logging
@@ -32,12 +33,18 @@ def _setup_logging(verbose: bool, debug_prompts: bool) -> None:
 @app.command()
 def main(
     input: Path = typer.Option(..., "--input", "-i", help="Path to nts_attributes CSV"),
-    output: Path = typer.Option(..., "--output", "-o", help="Output JSONL path (CSV written alongside)"),
+    output: Path = typer.Option(
+        ..., "--output", "-o", help="Output JSONL path (CSV written alongside)"
+    ),
     config: Path = typer.Option(
         Path("configs/default.yaml"), "--config", "-c", help="Pipeline config YAML"
     ),
-    n_samples: int = typer.Option(10, "--n-samples", "-n", help="Number of schedules to generate"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Print prompt only, no API call"),
+    n_samples: int = typer.Option(
+        10, "--n-samples", "-n", help="Number of schedules to generate"
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Print prompt only, no API call"
+    ),
     debug_prompts: bool = typer.Option(
         False, "--debug", help="Log full prompts and responses to stderr"
     ),
@@ -54,6 +61,7 @@ def main(
         raise typer.Exit(1)
 
     import yaml
+
     with open(config) as f:
         cfg = yaml.safe_load(f)
 
@@ -64,12 +72,15 @@ def main(
     if dry_run:
         from actllm.prompt.builder import PromptBuilder
         from actllm.prompt.few_shot import FewShotSelector
+
         prompt_cfg = cfg.get("prompt", {})
         mode = prompt_cfg.get("mode", "zero_shot")
         n_examples = prompt_cfg.get("n_examples", 0)
         few_shot_selector = None
         if mode in ("few_shot", "cot_few_shot") and n_examples > 0:
-            pool_path = Path(prompt_cfg.get("few_shot_pool", "data/few_shot/pool.jsonl"))
+            pool_path = Path(
+                prompt_cfg.get("few_shot_pool", "data/few_shot/pool.jsonl")
+            )
             few_shot_selector = FewShotSelector(pool_path)
         builder = PromptBuilder(
             cfg["attributes"]["fields"],
@@ -88,7 +99,13 @@ def main(
     csv_path = output.with_suffix(".csv")
 
     from actllm.pipeline import ScheduleGenerator
+
     generator = ScheduleGenerator(config)
+
+    # save records for reproducibility
+    records_path = output.parent / "sampled_attributes.csv"
+    sample.to_csv(records_path, index=False)
+    typer.echo(f"Sampled attributes written to {records_path}")
 
     logger.info("Generating %d schedules → %s", len(records), output)
     stats = generator.generate_batch(records, output, csv_path=csv_path)

@@ -42,7 +42,7 @@ def test_all_attrs_rendered():
     assert "Gender: F" in prompt
     assert "Car access: yes" in prompt
     assert "Employment status: employed" in prompt
-    assert "Household income: high" in prompt
+    assert "Annual household income: high" in prompt
     assert "Area type: urban" in prompt
 
 

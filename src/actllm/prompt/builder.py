@@ -15,40 +15,48 @@ from .templates import (
 )
 
 _ATTR_LABELS: dict[str, str] = {
-    "age": "Age",
-    "gender": "Gender",
-    "sex": "Sex",
-    "car_access": "Car access",
-    "work_status": "Employment status",
-    "income": "Annual household income",
-    "area": "Area type",
-    "hh_children": "Has children in household",
-    "hh_size": "Household number of members",
-    "education": "Education level",
-    "license": "Driving licence",
-    "dwelling": "Dwelling type",
-    "ownership": "Home ownership",
-    "vehicles": "Household number of vehicles",
-    "disability": "Disability status",
-    "can_wfh": "Can work from home",
-    "occupation": "Occupation",
-    "race": "Race/ethnicity",
-    "has_licence": "Has driving licence",
-    "relationship": "Relationship to head of household",
-    "employment": "Employment status",
-    "country": "Country",
-    "source": "Data source",
-    "year": "Year of survey",
-    "month": "Month of survey",
-    "day": "Day of survey",
-    "hh_income": "Annual household income (euros)",
-    "hh_zone": "Household location type",
-    "weight": "Survey weight",
-    "access_egress_distance": "Access/egress distance (km) to public transit",
-    "max_temp_c": "Max day temperature (°C) on day of survey",
-    "rain": "Rain (mm) on day of survey",
-    "avg_speed": "Average speed (km/h) on day of survey",
+    "age": lambda x: f"Age: {x}",
+    "gender": lambda x: f"Gender: {x}",
+    "sex": lambda x: f"Sex: {x}",
+    "car_access": lambda x: f"Car access: {x}",
+    "work_status": lambda x: f"Employment status: {x}",
+    "income": lambda x: f"Annual household income: {x} Euros",
+    "area": lambda x: f"Household area type: {x}",
+    "hh_children": lambda x: f"Has children in household: {x}",
+    "hh_size": lambda x: f"Household number of members: {x}",
+    "education": lambda x: f"Education level: {x}",
+    "license": lambda x: f"Driving licence: {x}",
+    "dwelling": lambda x: f"Dwelling type: {x}",
+    "ownership": lambda x: f"Home ownership: {x}",
+    "vehicles": lambda x: f"Household number of vehicles: {x}",
+    "disability": lambda x: f"Disability status: {x}",
+    "can_wfh": lambda x: f"Can work from home: {x}",
+    "occupation": lambda x: f"Occupation: {x}",
+    "race": lambda x: f"Race/ethnicity: {x}",
+    "has_licence": lambda x: f"Has driving licence: {x}",
+    "relationship": lambda x: f"Relationship to head of household: {x}",
+    "employment": lambda x: f"Employment status: {x}",
+    "country": lambda x: f"Country: {x}",
+    "source": lambda x: f"Data source: {x}",
+    "year": lambda x: f"Year of survey: {x}",
+    "month": lambda x: f"Month of survey: {x}",
+    "day": lambda x: f"Day of survey: {x}",
+    "hh_income": lambda x: f"Household income: {x} Euros per year",
+    "hh_zone": lambda x: f"Household location type: {x}",
+    "weight": lambda x: f"Survey weight: {x}",
+    "access_egress_distance": lambda x: f"Distance to public transit: {x} km",
+    "max_temp_c": lambda x: f"Max day temperature on day of survey: {x} °C",
+    "rain": lambda x: f"Rain on day of survey: {x} mm",
+    "avg_speed": lambda x: f"Average speed on day of survey: {x} km/hr",
 }
+
+
+def _normalise_entry(entry: dict[str, Any]) -> dict[str, str]:
+    """Convert verbose {"activity": x, "start": t} to compact {x: t}."""
+    if "activity" in entry:
+        return {entry["activity"]: entry["start"]}
+    return entry
+
 
 _COT_MODES = {"cot_zero_shot", "cot_few_shot"}
 _FEW_SHOT_MODES = {"few_shot", "cot_few_shot"}
@@ -119,15 +127,18 @@ class PromptBuilder:
             value = attributes.get(field)
             if value is None or str(value).strip() == "":
                 continue
-            label = _ATTR_LABELS.get(field, field.replace("_", " ").title())
-            lines.append(f"- {label}: {value}")
+            labeller = _ATTR_LABELS.get(
+                field, lambda x: f"{field.replace("_", " ").title()}: {x}"
+            )
+            lines.append(f"- {labeller(value)}")
         return "\n".join(lines) if lines else "- No attributes provided"
 
     def _render_examples(self, examples: list[dict[str, Any]]) -> str:
         blocks: list[str] = []
         for i, ex in enumerate(examples, 1):
             attrs_block = self._render_attributes(ex.get("attributes", {}))
-            sched_json = json.dumps({"schedule": ex.get("schedule", [])})
+            schedule = [_normalise_entry(e) for e in ex.get("schedule", [])]
+            sched_json = json.dumps(schedule)
             blocks.append(
                 f"### Example {i}\nPerson:\n{attrs_block}\n\nSchedule:\n{sched_json}"
             )

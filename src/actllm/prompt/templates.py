@@ -12,7 +12,7 @@ First reason briefly about the person's likely daily pattern, then produce the f
 
 _CONSTRAINTS = """\
 ## Hard Constraints
-1. The schedule MUST start with activity "home" at exactly "00:00".
+1. The schedule must start with an activity with start time exactly "00:00", followed by some number of activities, with strictly increasing start times.
 2. Allowed activity types (use these exact strings): home, work, education, shop, medical, other, escort, visit
 3. Consecutive home, work or education activities should not occur, eg, a work activity should not be immediately followed by another work activity.
 4. Times use 24-hour HH:MM format. Hours range 00–23, minutes range 00–59.
@@ -20,15 +20,13 @@ _CONSTRAINTS = """\
 6. The final activity is expected to be "home" and must start before 24:00 and will be assumed to end at 24:00.
 
 ## Output Format
-Respond with a single JSON object in exactly this structure. No other text.
+Respond with a single JSON array. Each element is a one-key object mapping the activity name to its start time. No other text.
 
-{{
-  "schedule": [
-    {{"activity": "home", "start": "00:00"}},
-    {{"activity": "work", "start": "08:30"}},
-    {{"activity": "home", "start": "17:35"}}
-  ]
-}}
+[
+  {{"home": "00:00"}},
+  {{"work": "08:30"}},
+  {{"home": "17:35"}}
+]
 """
 
 ZERO_SHOT_TEMPLATE = """\
@@ -57,7 +55,7 @@ Generate a realistic 24-hour activity schedule for the following person.
 {attributes_block}
 
 ## Hard Constraints
-1. The schedule MUST start with activity "home" at exactly "00:00".
+1. The schedule must start with an activity with start time exactly "00:00", followed by some number of activities, with strictly increasing start times.
 2. Allowed activity types (use these exact strings): home, work, education, shop, medical, other, escort, visit
 3. Consecutive home, work or education activities should not occur, eg, a work activity should not be immediately followed by another work activity.
 4. Times use 24-hour HH:MM format. Hours range 00–23, minutes range 00–59.
@@ -73,11 +71,11 @@ and any other activities they might do. Then produce the schedule JSON inside a 
 </reasoning>
 
 <schedule>
-{{"schedule": [
-  {{"activity": "home", "start": 00:00}},
-  {{"activity": "work", "start": 08:30}},
-  {{"activity": "home", "start": 17:35}}
-]}}
+[
+  {{"home": "00:00"}},
+  {{"work": "08:30"}},
+  {{"home": "17:35"}}
+]
 </schedule>
 """
 
@@ -91,7 +89,7 @@ Generate a realistic 24-hour activity schedule for the following person.
 {attributes_block}
 
 ## Hard Constraints
-1. The schedule MUST start with activity "home" at exactly "00:00".
+1. The schedule must start with an activity with start time exactly "00:00", followed by some number of activities, with strictly increasing start times.
 2. Allowed activity types (use these exact strings): home, work, education, shop, medical, other, escort, visit
 3. Consecutive home, work or education activities should not occur, eg, a work activity should not be immediately followed by another work activity.
 4. Times use 24-hour HH:MM format. Hours range 00–23, minutes range 00–59.
@@ -107,11 +105,11 @@ and any other activities they might do. Then produce the schedule JSON inside a 
 </reasoning>
 
 <schedule>
-{{"schedule": [
-  {{"activity": "home", "start": 00:00}},
-  {{"activity": "work", "start": 08:30}},
-  {{"activity": "home", "start": 17:35}}
-]}}
+[
+  {{"home": "00:00"}},
+  {{"work": "08:30"}},
+  {{"home": "17:35"}}
+]
 </schedule>
 """
 
@@ -126,7 +124,7 @@ Please generate a corrected 24-hour activity schedule for the same person.
 {attributes_block}
 
 ## Hard Constraints
-1. The schedule MUST start with activity "home" at exactly "00:00".
+1. The schedule must start with an activity with start time exactly "00:00", followed by some number of activities, with strictly increasing start times.
 2. Allowed activity types (use these exact strings): home, work, education, shop, medical, other, escort, visit
 3. Consecutive home, work or education activities should not occur, eg, a work activity should not be immediately followed by another work activity.
 4. Times use 24-hour HH:MM format. Hours range 00–23, minutes range 00–59.
@@ -134,13 +132,11 @@ Please generate a corrected 24-hour activity schedule for the same person.
 6. The final activity is expected to be "home" and must start before 24:00 and will be assumed to end at 24:00.
 
 ## Output Format
-Respond with a single JSON object in exactly this structure. No other text.
+Respond with a single JSON array. Each element is a one-key object mapping the activity name to its start time. No other text.
 
-{{
-  "schedule": [
-    {{"activity": "home", "start": "00:00"}},
-    {{"activity": "work", "start": "08:30"}},
-    {{"activity": "home", "start": "17:35"}}
-  ]
-}}
+[
+  {{"home": "00:00"}},
+  {{"work": "08:30"}},
+  {{"home": "17:35"}}
+]
 """

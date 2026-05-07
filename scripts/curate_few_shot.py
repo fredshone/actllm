@@ -155,10 +155,7 @@ def main(
                 attributes[field] = val
 
             schedule = [
-                {
-                    "activity": r["act"],
-                    "start": f"{int(r['start']) // 60:02d}:{int(r['start']) % 60:02d}",
-                }
+                {r["act"]: f"{int(r['start']) // 60:02d}:{int(r['start']) % 60:02d}"}
                 for _, r in grp.iterrows()
             ]
             age = str(row.get("age", "unknown"))

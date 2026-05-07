@@ -21,8 +21,9 @@ ABLATION_CONFIGS = [
     "zero_shot.yaml",
     "few_shot_random.yaml",
     "few_shot_stratified.yaml",
-    "cot_zero_shot.yaml",
-    "cot_few_shot.yaml",
+    "few_shot_nearest.yaml",
+    # "cot_zero_shot.yaml",
+    # "cot_few_shot.yaml",
     "high_temp.yaml",
     "low_temp.yaml",
 ]
@@ -65,7 +66,9 @@ def main(
         [], "--config", "-c", help="Run only these config filenames (default: all)"
     ),
     dry_run: bool = typer.Option(
-        False, "--dry-run", help="Print rendered prompts for each config without calling the API"
+        False,
+        "--dry-run",
+        help="Print rendered prompts for each config without calling the API",
     ),
     debug_prompts: bool = typer.Option(
         False, "--debug-prompts", help="Log full prompts (including few-shot) to stderr"
@@ -84,7 +87,8 @@ def main(
     sample_size = min(n_samples, len(df))
     typer.echo(f"Sample size: {sample_size} persons")
 
-    records = df.sample(n=sample_size, random_state=42).to_dict(orient="records")
+    records_df = df.sample(n=sample_size, random_state=42)
+    records = records_df.to_dict(orient="records")
 
     if dry_run:
         import yaml
@@ -104,7 +108,9 @@ def main(
             n_examples = prompt_cfg.get("n_examples", 0)
             few_shot_selector = None
             if mode in ("few_shot", "cot_few_shot") and n_examples > 0:
-                pool_path = Path(prompt_cfg.get("few_shot_pool", "data/few_shot/pool.jsonl"))
+                pool_path = Path(
+                    prompt_cfg.get("few_shot_pool", "data/few_shot/pool.jsonl")
+                )
                 few_shot_selector = FewShotSelector(pool_path)
             builder = PromptBuilder(
                 cfg["attributes"]["fields"],
@@ -137,6 +143,10 @@ def main(
         run_dir.mkdir(parents=True, exist_ok=True)
         jsonl_path = run_dir / "schedules.jsonl"
         csv_path = jsonl_path.with_suffix(".csv")
+
+        # save records for reproducibility
+        records_path = run_dir / "attributes.csv"
+        records_df.to_csv(records_path, index=False)
 
         typer.echo(f"\n→ {config_name}")
         try:

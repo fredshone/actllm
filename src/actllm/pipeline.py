@@ -43,7 +43,9 @@ class ScheduleGenerator:
 
         few_shot_selector: FewShotSelector | None = None
         if mode in ("few_shot", "cot_few_shot") and n_examples > 0:
-            pool_path = Path(prompt_cfg.get("few_shot_pool", "data/few_shot/pool.jsonl"))
+            pool_path = Path(
+                prompt_cfg.get("few_shot_pool", "data/few_shot/pool.jsonl")
+            )
             few_shot_selector = FewShotSelector(pool_path)
 
         self._builder = PromptBuilder(
@@ -78,7 +80,11 @@ class ScheduleGenerator:
 
             _prompt_logger.debug(
                 "=== SYSTEM [%s] ===\n%s\n=== USER [%s attempt %d] ===\n%s",
-                record_id, system_prompt, record_id, attempt, prompt,
+                record_id,
+                system_prompt,
+                record_id,
+                attempt,
+                prompt,
             )
             raw = self._client.generate(system_prompt, prompt)
             state.raw_response = raw
@@ -123,7 +129,7 @@ class ScheduleGenerator:
         )
 
     def export_csv(self, jsonl_path: Path, csv_path: Path) -> int:
-        """Convert a generated JSONL file to NTS-compatible CSV. Returns number of rows written."""
+        """Convert a generated JSONL file to CSV. Returns number of rows written."""
         all_rows: list[dict[str, Any]] = []
         with jsonlines.open(jsonl_path) as reader:
             for record in reader:
@@ -139,9 +145,9 @@ class ScheduleGenerator:
         if all_rows:
             pd.DataFrame(all_rows).to_csv(csv_path, index=False)
         else:
-            pd.DataFrame(columns=["pid", "hid", "act", "start", "end", "duration"]).to_csv(
-                csv_path, index=False
-            )
+            pd.DataFrame(
+                columns=["pid", "hid", "act", "start", "end", "duration"]
+            ).to_csv(csv_path, index=False)
         logger.info("Exported %d rows to %s", len(all_rows), csv_path)
         return len(all_rows)
 
@@ -161,7 +167,9 @@ class ScheduleGenerator:
 
         def _task(record: dict[str, Any], idx: int) -> GenerationRecord:
             record_id = str(record.get("pid", idx))
-            attrs = {field: record.get(field) for field in self._cfg["attributes"]["fields"]}
+            attrs = {
+                field: record.get(field) for field in self._cfg["attributes"]["fields"]
+            }
             return self.generate(attrs, record_id)
 
         with jsonlines.open(output_path, mode="w") as writer:
@@ -184,7 +192,9 @@ class ScheduleGenerator:
                                 n_invalid += 1
                                 for v in gen.violations:
                                     key = v.split(":")[0]
-                                    violation_counts[key] = violation_counts.get(key, 0) + 1
+                                    violation_counts[key] = (
+                                        violation_counts.get(key, 0) + 1
+                                    )
                             bar.update(1)
 
         if csv_path is not None:
