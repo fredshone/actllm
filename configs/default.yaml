@@ -1,23 +1,24 @@
 model:
-  provider: anthropic
-  name: claude-sonnet-4-6
+  provider: local
+  name: google/gemma-4-E2B-it
   temperature: 0.8
   max_tokens: 1024
-  max_retries: 3
+  max_retries: 5
 
-concurrency: 5  # parallel API calls in generate_batch
+concurrency: 1
+batch_size: 256
 
 prompt:
-  mode: zero_shot
-  n_examples: 0
-  example_selection: stratified
+  mode: few_shot
+  n_examples: 3
+  example_selection: nearest_neighbour
+  few_shot_pool: data/few_shot/pool.jsonl
 
 attributes:
   fields:
     - age
     - sex
     - vehicles
-    - has_licence
     - employment
     - hh_income
     - hh_zone

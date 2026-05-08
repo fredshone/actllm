@@ -22,8 +22,8 @@ ABLATION_CONFIGS = [
     "few_shot_random.yaml",
     "few_shot_stratified.yaml",
     "few_shot_nearest.yaml",
-    # "cot_zero_shot.yaml",
-    # "cot_few_shot.yaml",
+    "cot_zero_shot.yaml",
+    "cot_few_shot.yaml",
     "high_temp.yaml",
     "low_temp.yaml",
 ]

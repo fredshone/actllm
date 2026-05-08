@@ -1,0 +1,30 @@
+model:
+  provider: local
+  name: google/gemma-4-E2B-it
+  adapter_path: outputs/finetune/gemma-4-E2B-it-actllm/adapter
+  temperature: 0.7
+  max_tokens: 512
+  max_retries: 1
+
+concurrency: 1
+batch_size: 25
+
+prompt:
+  mode: zero_shot
+  n_examples: 0
+  example_selection: stratified
+
+attributes:
+  fields:
+    - age
+    - sex
+    - vehicles
+    - employment
+    - hh_income
+    - hh_zone
+    - day
+    - access_egress_distance
+
+validation:
+  strict: true
+  log_violations: true

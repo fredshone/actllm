@@ -42,6 +42,12 @@ ATTR_FIELDS = [
 ]
 
 
+def _str(val, default: str = "unknown") -> str:
+    if pd.isna(val):
+        return default
+    return str(val)
+
+
 def _is_valid(group: pd.DataFrame) -> bool:
     rows = group.sort_values("start")
     if rows.iloc[0]["act"] != "home" or rows.iloc[0]["start"] != 0:
@@ -97,17 +103,18 @@ def main(
 
     logger.info("Valid schedules: %d / %d", len(valid_pids), schedules["pid"].nunique())
 
-    strata: dict[tuple[str, str, str, str], list[str]] = {}
+    strata: dict[tuple[str, str, str, str, str], list[str]] = {}
     for pid in valid_pids:
         if pid not in attrs.index:
             continue
         row = attrs.loc[pid]
-        age = str(row.get("age", "unknown"))
-        ws = str(row.get("employment", "unknown"))
-        zone = str(row.get("hh_zone", "unknown"))
-        day = str(row.get("day", "unknown"))
+        age = _str(row.get("age"))
+        sex = _str(row.get("sex"))
+        ws = _str(row.get("employment"))
+        zone = _str(row.get("hh_zone"))
+        day = _str(row.get("day"))
 
-        strata.setdefault((age, ws, zone, day), []).append(pid)
+        strata.setdefault((age, sex, ws, zone, day), []).append(pid)
 
     logger.info("Strata found: %d", len(strata))
     total_selected = 0
@@ -115,11 +122,12 @@ def main(
         n = min(target_per_stratum, len(v))
         total_selected += n
         logger.info(
-            "  %s × %s × %s × %s: %d available, %d selected",
+            "  %s × %s × %s × %s × %s: %d available, %d selected",
             k[0],
             k[1],
             k[2],
             k[3],
+            k[4],
             len(v),
             n,
         )
@@ -152,21 +160,24 @@ def main(
                 val = row[field]
                 if hasattr(val, "item"):
                     val = val.item()
+                if pd.isna(val):
+                    val = "unknown"
                 attributes[field] = val
 
             schedule = [
                 {r["act"]: f"{int(r['start']) // 60:02d}:{int(r['start']) % 60:02d}"}
                 for _, r in grp.iterrows()
             ]
-            age = str(row.get("age", "unknown"))
+            age = _str(row.get("age"))
             example = {
                 "attributes": attributes,
                 "schedule": schedule,
                 "stratum": {
                     "age_band": age,
-                    "employment": str(row.get("employment", "unknown")),
-                    "hh_zone": str(row.get("hh_zone", "unknown")),
-                    "day": str(row.get("day", "unknown")),
+                    "sex": _str(row.get("sex")),
+                    "employment": _str(row.get("employment")),
+                    "hh_zone": _str(row.get("hh_zone")),
+                    "day": _str(row.get("day")),
                 },
             }
             f.write(json.dumps(example) + "\n")

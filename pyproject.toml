@@ -14,11 +14,20 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "tqdm>=4.0.0",
     "torch>=2.4.0",
+    "pytest>=9.0.3",
+    "transformers>=5.8.0",
 ]
 
 [project.optional-dependencies]
 local = [
     "transformers>=4.50.0",
+    "accelerate>=1.0.0",
+]
+finetune = [
+    "peft>=0.14.0",
+    "trl>=0.9.0",
+    "bitsandbytes>=0.43.0",
+    "datasets>=2.20.0",
     "accelerate>=1.0.0",
 ]
 dev = [

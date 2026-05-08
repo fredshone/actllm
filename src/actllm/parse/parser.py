@@ -14,7 +14,9 @@ _SCHEDULE_TAG_RE = re.compile(r"<schedule>(.*?)</schedule>", re.DOTALL | re.IGNO
 
 def _build_schedule(raw_list: list) -> Schedule:
     activities = [
-        Activity(activity=ActivityType(next(iter(item))), start=next(iter(item.values())))
+        Activity(
+            activity=ActivityType(next(iter(item))), start=next(iter(item.values()))
+        )
         for item in raw_list
     ]
     return Schedule(activities=activities)
@@ -61,5 +63,7 @@ class ResponseParser:
             errors.append("Tag extraction: no <schedule> tag found in response")
 
         snippet = raw[:200].replace("\n", " ")
-        logger.warning("All parse attempts failed. Errors: %s. Response: %.200s", errors, snippet)
+        logger.debug(
+            "All parse attempts failed. Errors: %s. Response: %.200s", errors, snippet
+        )
         return None, 3, errors

@@ -151,6 +151,114 @@ class ScheduleGenerator:
         logger.info("Exported %d rows to %s", len(all_rows), csv_path)
         return len(all_rows)
 
+    def _accumulate(
+        self,
+        gen: GenerationRecord,
+        writer: jsonlines.Writer,
+        n_valid: list[int],
+        n_invalid: list[int],
+        parse_failures: list[int],
+        violation_counts: dict[str, int],
+        bar: tqdm,  # type: ignore[type-arg]
+    ) -> None:
+        writer.write(json.loads(gen.model_dump_json()))
+        if gen.schedule is None:
+            parse_failures[0] += 1
+            n_invalid[0] += 1
+        elif gen.valid:
+            n_valid[0] += 1
+        else:
+            n_invalid[0] += 1
+            for v in gen.violations:
+                key = v.split(":")[0]
+                violation_counts[key] = violation_counts.get(key, 0) + 1
+        bar.update(1)
+
+    def _generate_batch_local(
+        self,
+        records: list[dict[str, Any]],
+        writer: jsonlines.Writer,
+        n_valid: list[int],
+        n_invalid: list[int],
+        parse_failures: list[int],
+        violation_counts: dict[str, int],
+        bar: tqdm,  # type: ignore[type-arg]
+    ) -> None:
+        system_prompt = self._builder.system_prompt
+        max_retries = self._model_config.max_retries
+
+        pending = [
+            {
+                "record_id": str(r.get("pid", i)),
+                "attrs": {f: r.get(f) for f in self._cfg["attributes"]["fields"]},
+                "prompt": self._builder.build(
+                    {f: r.get(f) for f in self._cfg["attributes"]["fields"]}
+                ),
+                "state": RetryState(
+                    schedule=None,
+                    raw_response="",
+                    attempts=0,
+                    valid=False,
+                    violations=[],
+                    fallback_level=3,
+                ),
+            }
+            for i, r in enumerate(records, 1)
+        ]
+
+        batch_size = self._cfg.get("batch_size", 4)
+
+        for attempt in range(1, max_retries + 1):
+            if not pending:
+                break
+            still_pending = []
+            for chunk_start in range(0, len(pending), batch_size):
+                chunk = pending[chunk_start : chunk_start + batch_size]
+                prompts = [(system_prompt, item["prompt"]) for item in chunk]
+                responses = self._client.generate_batch(prompts)
+                for item, raw in zip(chunk, responses):
+                    state: RetryState = item["state"]
+                    state.attempts = attempt
+                    state.raw_response = raw
+                    schedule, fallback_level, parse_errors = self._parser.parse(raw)
+                    state.fallback_level = fallback_level
+                    if schedule is None:
+                        if attempt < max_retries:
+                            errors = ["Could not parse a valid JSON schedule from the response."] + parse_errors
+                            item["prompt"] = self._builder.build_retry(item["attrs"], errors)
+                            still_pending.append(item)
+                            continue
+                    else:
+                        state.schedule = schedule
+                        result = self._validator.validate(schedule)
+                        state.valid = result.valid
+                        state.violations = result.violations
+                        if result.valid or attempt == max_retries:
+                            pass
+                        else:
+                            item["prompt"] = self._builder.build_retry(item["attrs"], result.violations)
+                            still_pending.append(item)
+                            continue
+                    schedule_data: list[dict[str, Any]] | None = None
+                    if state.schedule is not None:
+                        schedule_data = [
+                            {"activity": str(a.activity), "start": a.start}
+                            for a in state.schedule.activities
+                        ]
+                    gen = GenerationRecord(
+                        id=item["record_id"],
+                        attributes=item["attrs"],
+                        schedule=schedule_data,
+                        valid=state.valid,
+                        violations=state.violations,
+                        retries=state.attempts - 1,
+                        model=self._model_config.name,
+                        prompt_mode=self._cfg["prompt"]["mode"],
+                        raw_response=state.raw_response,
+                    )
+                    self._accumulate(gen, writer, n_valid, n_invalid, parse_failures, violation_counts, bar)
+            pending = still_pending
+
     def generate_batch(
         self,
         records: list[dict[str, Any]],
@@ -158,44 +266,39 @@ class ScheduleGenerator:
         csv_path: Path | None = None,
     ) -> dict[str, Any]:
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        concurrency = self._cfg.get("concurrency", 1)
-        n_valid = 0
-        n_invalid = 0
-        parse_failures = 0
+        n_valid = [0]
+        n_invalid = [0]
+        parse_failures = [0]
         violation_counts: dict[str, int] = {}
-        lock = threading.Lock()
-
-        def _task(record: dict[str, Any], idx: int) -> GenerationRecord:
-            record_id = str(record.get("pid", idx))
-            attrs = {
-                field: record.get(field) for field in self._cfg["attributes"]["fields"]
-            }
-            return self.generate(attrs, record_id)
 
         with jsonlines.open(output_path, mode="w") as writer:
-            with ThreadPoolExecutor(max_workers=concurrency) as pool:
-                futures = {
-                    pool.submit(_task, record, i): i
-                    for i, record in enumerate(records, 1)
-                }
-                with tqdm(total=len(records), unit="schedule") as bar:
-                    for future in as_completed(futures):
-                        gen = future.result()
-                        with lock:
-                            writer.write(json.loads(gen.model_dump_json()))
-                            if gen.schedule is None:
-                                parse_failures += 1
-                                n_invalid += 1
-                            elif gen.valid:
-                                n_valid += 1
-                            else:
-                                n_invalid += 1
-                                for v in gen.violations:
-                                    key = v.split(":")[0]
-                                    violation_counts[key] = (
-                                        violation_counts.get(key, 0) + 1
-                                    )
-                            bar.update(1)
+            with tqdm(total=len(records), unit="schedule") as bar:
+                if self._model_config.provider == "local":
+                    self._generate_batch_local(
+                        records, writer, n_valid, n_invalid, parse_failures, violation_counts, bar
+                    )
+                else:
+                    concurrency = self._cfg.get("concurrency", 1)
+                    lock = threading.Lock()
+
+                    def _task(record: dict[str, Any], idx: int) -> GenerationRecord:
+                        record_id = str(record.get("pid", idx))
+                        attrs = {
+                            field: record.get(field) for field in self._cfg["attributes"]["fields"]
+                        }
+                        return self.generate(attrs, record_id)
+
+                    with ThreadPoolExecutor(max_workers=concurrency) as pool:
+                        futures = {
+                            pool.submit(_task, record, i): i
+                            for i, record in enumerate(records, 1)
+                        }
+                        for future in as_completed(futures):
+                            gen = future.result()
+                            with lock:
+                                self._accumulate(
+                                    gen, writer, n_valid, n_invalid, parse_failures, violation_counts, bar
+                                )
 
         if csv_path is not None:
             self.export_csv(output_path, csv_path)
@@ -203,10 +306,10 @@ class ScheduleGenerator:
         total = len(records)
         return {
             "total": total,
-            "n_valid": n_valid,
-            "n_invalid": n_invalid,
-            "parse_failures": parse_failures,
-            "parse_success_rate": (total - parse_failures) / total if total else 0.0,
-            "validity_rate": n_valid / total if total else 0.0,
+            "n_valid": n_valid[0],
+            "n_invalid": n_invalid[0],
+            "parse_failures": parse_failures[0],
+            "parse_success_rate": (total - parse_failures[0]) / total if total else 0.0,
+            "validity_rate": n_valid[0] / total if total else 0.0,
             "violation_counts": violation_counts,
         }

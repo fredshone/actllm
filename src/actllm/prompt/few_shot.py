@@ -22,6 +22,8 @@ def _vec_age(age: Any) -> float:
 
 
 def _vec_employment(ws: Any) -> float:
+    if not isinstance(ws, str):
+        return 0.5
     if ws.lower() in ("employed", "ft-employed", "pt-employed"):
         return 1.0
     if ws.lower() in ("unemployed", "not working", "retired"):
@@ -32,6 +34,8 @@ def _vec_employment(ws: Any) -> float:
 
 
 def _vec_zone(zone: Any) -> float:
+    if not isinstance(zone, str):
+        return 0.5
     if zone.lower() == "urban":
         return 1.0
     if zone.lower() == "rural":
@@ -40,6 +44,8 @@ def _vec_zone(zone: Any) -> float:
 
 
 def _vec_day(day: Any) -> float:
+    if not isinstance(day, str):
+        return 0.5
     if day.lower() in ["saturday", "sunday"]:
         return 0.0
     if day.lower() in ["monday", "tuesday", "wednesday", "thursday", "friday"]:
@@ -48,6 +54,8 @@ def _vec_day(day: Any) -> float:
 
 
 def _vec_sex(sex: Any) -> float:
+    if not isinstance(sex, str):
+        return 0.5
     if sex.lower() in ("m", "male"):
         return 1.0
     if sex.lower() in ("f", "female"):
@@ -55,7 +63,7 @@ def _vec_sex(sex: Any) -> float:
     return 0.5
 
 
-def _vec_vehices(ca: Any) -> float:
+def _vec_vehicles(ca: Any) -> float:
     try:
         n = int(ca)
         if n == 0:
@@ -99,7 +107,7 @@ def _encode(attributes: dict) -> list[float]:
     sex = _vec_sex(attributes.get("sex"))
     vec.append(sex)
 
-    ca = _vec_vehices(attributes.get("vehicles"))
+    ca = _vec_vehicles(attributes.get("vehicles"))
     vec.append(ca)
 
     income = _vec_income(attributes.get("hh_income"))
@@ -140,6 +148,7 @@ class FewShotSelector:
 
     def _stratified(self, attributes: dict, n: int) -> list[dict[str, Any]]:
         target_age = str(attributes.get("age", "unknown"))
+        target_sex = str(attributes.get("sex", "unknown"))
         target_ws = str(attributes.get("employment", "unknown"))
         target_zone = str(attributes.get("hh_zone", "unknown"))
         target_day = str(attributes.get("day", "unknown"))
@@ -149,6 +158,8 @@ class FewShotSelector:
             ex_attrs = ex.get("attributes", {})
             score = 0
             if str(ex_attrs.get("age")) == target_age:
+                score += 1
+            if str(ex_attrs.get("sex")) == target_sex:
                 score += 1
             if str(ex_attrs.get("employment")) == target_ws:
                 score += 1

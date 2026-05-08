@@ -25,7 +25,7 @@ Requires a CUDA-capable GPU. Installs `transformers` and `accelerate` alongside 
 uv sync --extra local
 ```
 
-The model is downloaded from HuggingFace on first use (~8 GB for Gemma 3 4B). No API key needed.
+The model is downloaded from HuggingFace on first use (~4 GB for Gemma 4 E2B). No API key needed.
 
 ## Generate schedules
 
@@ -52,7 +52,7 @@ Pass `--config configs/ablations/few_shot_stratified.yaml` (or any other config)
 ### Running with a local Gemma model
 
 ```bash
-# Generate 100 schedules using Gemma 3 4B on GPU
+# Generate 100 schedules using Gemma 4 E2B on GPU
 uv run python scripts/generate.py \
   --config configs/gemma.yaml \
   --input data/nts_attributes_2023.csv \
@@ -100,6 +100,50 @@ prompt:
   example_selection: stratified   # random | stratified | nearest_neighbour
   few_shot_pool: data/few_shot/pool.jsonl
 ```
+
+## Fine-tuning
+
+QLoRA fine-tuning of Gemma 4 E2B on the curated schedule pool. Requires the `finetune` extras and a CUDA GPU (~10 GB VRAM for 4-bit quantization).
+
+```bash
+uv sync --extra finetune
+```
+
+**1. Prepare training data**
+
+Joins `activities.csv` and `attributes_binned.csv` from the NTS 2023 output, converts minute-offset start times to HH:MM, and writes `data/finetune/train.jsonl` and `data/finetune/val.jsonl` using the Gemma chat template (stratified 90/10 split, ~56K persons). Pass `--verify` to print token count statistics before committing to training.
+
+```bash
+uv run python scripts/prepare_finetune_data.py --verify
+```
+
+Override the default paths if your data lives elsewhere:
+
+```bash
+uv run python scripts/prepare_finetune_data.py \
+  --activities ~/Data/foundata/out/nts/2023/activities.csv \
+  --attributes ~/Data/foundata/out/nts/2023/attributes_binned.csv
+```
+
+**2. Train**
+
+Runs QLoRA (4-bit NF4 base + LoRA rank-16 adapters) for 3 epochs. Saves the adapter to `outputs/finetune/gemma-4-E2B-it-actllm/adapter/`. Expected training time ~1 hour on an RTX A5000.
+
+```bash
+uv run python scripts/finetune.py
+```
+
+**3. Generate with the fine-tuned model**
+
+```bash
+uv run python scripts/generate.py \
+  --config configs/gemma_finetuned.yaml \
+  --input data/nts_attributes_2023.csv \
+  --output outputs/gemma_finetuned_run.jsonl \
+  --n-samples 100
+```
+
+`configs/gemma_finetuned.yaml` points at the saved adapter and uses zero-shot prompting (fine-tuning subsumes few-shot examples).
 
 ## Few-shot pool
 
@@ -154,7 +198,7 @@ model:
 concurrency: 5  # parallel API calls; set to 1 for local inference
 ```
 
-The `local` provider loads any HuggingFace text-generation model onto the GPU. The bundled `configs/gemma.yaml` targets `google/gemma-3-4b-it`; swap `name` for any other Gemma variant (e.g. `google/gemma-2-9b-it`).
+The `local` provider loads any HuggingFace text-generation model onto the GPU. The bundled `configs/gemma.yaml` targets `google/gemma-4-E2B-it`; swap `name` for any other Gemma variant. Set `adapter_path` to load a LoRA adapter on top of the base model (see Fine-tuning above).
 
 ## Tests
 

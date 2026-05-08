@@ -1,11 +1,12 @@
 model:
   provider: local
-  name: google/gemma-3-4b-it
+  name: google/gemma-4-E2B-it
   temperature: 0.8
   max_tokens: 1024
   max_retries: 2
 
 concurrency: 1  # local GPU inference is sequential
+batch_size: 25
 
 prompt:
   mode: zero_shot
@@ -17,7 +18,6 @@ attributes:
     - age
     - sex
     - vehicles
-    - has_licence
     - employment
     - hh_income
     - hh_zone

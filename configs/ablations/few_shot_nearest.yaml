@@ -1,11 +1,12 @@
 model:
-  provider: anthropic
-  name: claude-haiku-4-5
+  provider: local
+  name: google/gemma-4-E2B-it
   temperature: 0.8
   max_tokens: 1024
   max_retries: 5
 
-concurrency: 2
+concurrency: 1
+batch_size: 25
 
 prompt:
   mode: few_shot
@@ -18,7 +19,6 @@ attributes:
     - age
     - sex
     - vehicles
-    - has_licence
     - employment
     - hh_income
     - hh_zone
