@@ -1,4 +1,4 @@
-"""QLoRA fine-tuning of Gemma 4 E2B for activity schedule generation."""
+"""QLoRA fine-tuning of local LLMs for activity schedule generation."""
 
 from __future__ import annotations
 
@@ -16,20 +16,34 @@ from trl import SFTConfig, SFTTrainer
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s — %(message)s")
 logger = logging.getLogger(__name__)
 
-app = typer.Typer(help="QLoRA fine-tune Gemma 4 E2B on the activity schedule pool.")
+app = typer.Typer(help="QLoRA fine-tune a local LLM on the activity schedule pool.")
 
-MODEL = "google/gemma-4-E2B-it"
-OUTPUT_DIR = Path("outputs/finetune/gemma-4-E2B-it-actllm")
+DEFAULT_MODEL = "google/gemma-4-E2B-it"
 
-# Gemma 4 uses interleaved local/global attention layers.
-# If training fails with "target modules not found", inspect layer names with:
-#   for name, _ in model.named_modules(): print(name)
-# and update this list to cover both local- and global-attention projections.
-LORA_TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj"]
 
+@dataclass
+class _ModelProfile:
+    output_dir: Path
+    lora_target_modules: str
+    response_template: str
+
+
+# Gemma 4 is multimodal: vision layers (model.vision_tower.*) use
+# Gemma4ClippableLinear which PEFT cannot replace. Use a regex string so
+# PEFT does re.fullmatch and only targets the text-decoder attention layers.
 # Gemma 4 uses <|turn>model\n (not Gemma 3's <start_of_turn>model\n).
-# Token IDs are computed at runtime from the loaded tokenizer.
-_RESPONSE_TEMPLATE = "<|turn>model\n"
+_MODEL_PROFILES: dict[str, _ModelProfile] = {
+    "google/gemma-4-E2B-it": _ModelProfile(
+        output_dir=Path("outputs/finetune/gemma-4-E2B-it-actllm"),
+        lora_target_modules=r"model\.language_model\.layers\.\d+\.self_attn\.(q_proj|k_proj|v_proj|o_proj)",
+        response_template="<|turn>model\n",
+    ),
+    "Qwen/Qwen2.5-0.5B-Instruct": _ModelProfile(
+        output_dir=Path("outputs/finetune/Qwen2.5-0.5B-Instruct-actllm"),
+        lora_target_modules=r"model\.layers\.\d+\.self_attn\.(q_proj|k_proj|v_proj|o_proj)",
+        response_template="<|im_start|>assistant\n",
+    ),
+}
 
 
 @dataclass
@@ -64,12 +78,22 @@ class _CompletionOnlyCollator:
 @app.command()
 def main(
     data_dir: Path = typer.Option(Path("data/finetune"), "--data-dir"),
-    output_dir: Path = typer.Option(OUTPUT_DIR, "--output-dir"),
-    model_name: str = typer.Option(MODEL, "--model"),
+    output_dir: Path | None = typer.Option(None, "--output-dir"),
+    model_name: str = typer.Option(DEFAULT_MODEL, "--model"),
     epochs: int = typer.Option(3, "--epochs"),
     lr: float = typer.Option(2e-4, "--lr"),
     rank: int = typer.Option(16, "--rank"),
 ) -> None:
+    profile = _MODEL_PROFILES.get(model_name)
+    if profile is None:
+        typer.echo(
+            f"Unknown model {model_name!r}. Add an entry to _MODEL_PROFILES in finetune.py.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    resolved_output_dir = output_dir if output_dir is not None else profile.output_dir
+
     train_file = data_dir / "train.jsonl"
     val_file = data_dir / "val.jsonl"
     if not train_file.exists() or not val_file.exists():
@@ -79,14 +103,14 @@ def main(
         )
         raise typer.Exit(1)
 
-    adapter_dir = output_dir / "adapter"
+    adapter_dir = resolved_output_dir / "adapter"
     adapter_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info("Loading tokenizer: %s", model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    response_template_ids = tokenizer.encode(_RESPONSE_TEMPLATE, add_special_tokens=False)
-    logger.info("Response template %r → token IDs %s", _RESPONSE_TEMPLATE, response_template_ids)
+    response_template_ids = tokenizer.encode(profile.response_template, add_special_tokens=False)
+    logger.info("Response template %r → token IDs %s", profile.response_template, response_template_ids)
 
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
@@ -108,7 +132,7 @@ def main(
         r=rank,
         lora_alpha=rank * 2,
         lora_dropout=0.05,
-        target_modules=LORA_TARGET_MODULES,
+        target_modules=profile.lora_target_modules,
         bias="none",
     )
     model = get_peft_model(model, lora_config)
@@ -125,10 +149,11 @@ def main(
     )
 
     sft_config = SFTConfig(
-        output_dir=str(output_dir / "checkpoints"),
+        output_dir=str(resolved_output_dir / "checkpoints"),
         num_train_epochs=epochs,
-        per_device_train_batch_size=4,
-        gradient_accumulation_steps=2,
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=8,
+        gradient_checkpointing=True,
         learning_rate=lr,
         lr_scheduler_type="cosine",
         warmup_ratio=0.05,
@@ -138,7 +163,7 @@ def main(
         save_strategy="epoch",
         load_best_model_at_end=False,
         dataset_text_field="text",
-        max_seq_length=640,
+        max_length=640,
         report_to="none",
     )
 

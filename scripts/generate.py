@@ -96,6 +96,7 @@ def main(
         typer.echo(builder.build(attrs))
         return
 
+    output.parent.mkdir(parents=True, exist_ok=True)
     csv_path = output.with_suffix(".csv")
 
     from actllm.pipeline import ScheduleGenerator
