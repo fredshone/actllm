@@ -22,6 +22,16 @@ def test_direct_json_parse():
     assert schedule.activities[1].start == "08:00"
 
 
+def test_markdown_fence_parse():
+    parser = make_parser()
+    for fenced in [f"```json\n{VALID_JSON}\n```", f"```\n{VALID_JSON}\n```"]:
+        schedule, level, errors = parser.parse(fenced)
+        assert schedule is not None, f"failed to parse: {fenced!r}"
+        assert level == 0
+        assert errors == []
+        assert schedule.activities[1].activity == ActivityType.work
+
+
 def test_regex_fallback():
     parser = make_parser()
     wrapped = f"Here is the schedule:\n{VALID_JSON}\nDone."

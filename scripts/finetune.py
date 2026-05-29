@@ -80,8 +80,8 @@ def main(
     data_dir: Path = typer.Option(Path("data/finetune"), "--data-dir"),
     output_dir: Path | None = typer.Option(None, "--output-dir"),
     model_name: str = typer.Option(DEFAULT_MODEL, "--model"),
-    epochs: int = typer.Option(3, "--epochs"),
-    lr: float = typer.Option(2e-4, "--lr"),
+    epochs: int = typer.Option(1, "--epochs"),
+    lr: float = typer.Option(1e-4, "--lr"),
     rank: int = typer.Option(16, "--rank"),
 ) -> None:
     profile = _MODEL_PROFILES.get(model_name)
@@ -150,9 +150,9 @@ def main(
 
     sft_config = SFTConfig(
         output_dir=str(resolved_output_dir / "checkpoints"),
-        num_train_epochs=epochs,
+        num_train_epochs=epochs,  # default 1 — prevents mode collapse on imbalanced data
         per_device_train_batch_size=1,
-        gradient_accumulation_steps=8,
+        gradient_accumulation_steps=32,
         gradient_checkpointing=True,
         learning_rate=lr,
         lr_scheduler_type="cosine",

@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 _JSON_BLOCK_RE = re.compile(r"\[.*\]", re.DOTALL)
 _SCHEDULE_TAG_RE = re.compile(r"<schedule>(.*?)</schedule>", re.DOTALL | re.IGNORECASE)
+_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
 
 
 def _build_schedule(raw_list: list) -> Schedule:
@@ -27,9 +28,13 @@ class ResponseParser:
         """Return (schedule, fallback_level, errors) where level 0=direct, 1=regex, 2=tag, 3=failed."""
         errors: list[str] = []
 
+        # Strip markdown code fences before any parse attempt
+        fence_match = _FENCE_RE.search(raw)
+        text = fence_match.group(1).strip() if fence_match else raw.strip()
+
         # Level 0: direct JSON parse
         try:
-            obj = json.loads(raw.strip())
+            obj = json.loads(text)
             schedule = _build_schedule(obj)
             logger.debug("Parsed at fallback level 0 (direct JSON)")
             return schedule, 0, []
@@ -37,7 +42,7 @@ class ResponseParser:
             errors.append(f"Direct parse: {e}")
 
         # Level 1: extract JSON substring via regex
-        match = _JSON_BLOCK_RE.search(raw)
+        match = _JSON_BLOCK_RE.search(text)
         if match:
             try:
                 obj = json.loads(match.group())
@@ -50,7 +55,7 @@ class ResponseParser:
             errors.append("Regex extraction: no JSON block found in response")
 
         # Level 2: XML-style tag extraction
-        tag_match = _SCHEDULE_TAG_RE.search(raw)
+        tag_match = _SCHEDULE_TAG_RE.search(text)
         if tag_match:
             try:
                 obj = json.loads(tag_match.group(1).strip())
