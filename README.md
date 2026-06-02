@@ -186,15 +186,15 @@ Key options: `--epochs` (default 3), `--lr` (default 2e-4), `--rank` (default 16
 # Gemma fine-tuned
 uv run python scripts/generate.py \
   --config configs/gemma_finetuned.yaml \
-  --input data/nts_attributes_2023.csv \
+  --input ~/Data/foundata/out/nts/2023/attributes_binned.csv \
   --output outputs/gemma_finetuned_run.jsonl \
   --n-samples 100
 
 # Qwen fine-tuned
 uv run python scripts/generate.py \
   --config configs/qwen_finetuned.yaml \
-  --input data/nts_attributes_2023.csv \
-  --output outputs/qwen_finetuned_run.jsonl \
+  --input ~/Data/foundata/out/nts/2023/attributes_binned.csv \
+  --output outputs/finetune/Qwen2.5-0.5B-Instruct-actllm/qwen_finetuned_run.jsonl \
   --n-samples 100
 ```
 

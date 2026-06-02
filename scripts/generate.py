@@ -40,7 +40,7 @@ def main(
         Path("configs/default.yaml"), "--config", "-c", help="Pipeline config YAML"
     ),
     n_samples: int = typer.Option(
-        10, "--n-samples", "-n", help="Number of schedules to generate"
+        None, "--n-samples", "-n", help="Number of schedules to generate"
     ),
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Print prompt only, no API call"
@@ -66,7 +66,20 @@ def main(
         cfg = yaml.safe_load(f)
 
     df = pd.read_csv(input)
-    sample = df.sample(n=min(n_samples, len(df)), random_state=42)
+    if n_samples is not None:
+        if n_samples < len(df):
+            logger.info("Sampling %d records from %d total", n_samples, len(df))
+            sample = df.sample(n=min(n_samples, len(df)), random_state=42)
+        else:
+            logger.info(
+                "Requested n_samples=%d exceeds total records (%d), using all",
+                n_samples,
+                len(df),
+            )
+            sample = df
+    else:
+        logger.info("Using all %d records from input", len(df))
+        sample = df
     records = sample.to_dict(orient="records")
 
     if dry_run:

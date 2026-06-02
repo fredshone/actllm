@@ -1,7 +1,7 @@
 model:
   provider: local
   name: Qwen/Qwen2.5-0.5B-Instruct
-  adapter_path: outputs/finetune/qwen2.5-0.5B/adapter
+  adapter_path: outputs/finetune/Qwen2.5-0.5B-Instruct-actllm/adapter
   temperature: 0.7
   max_tokens: 1024
   max_retries: 1
